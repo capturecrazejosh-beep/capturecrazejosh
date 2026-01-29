@@ -62,12 +62,11 @@
             padding-bottom: 100px;
         }
 
-        .item {
-            position: relative;
-            background: rgba(255,255,255,0.02);
-            border-radius: 12px;
-            overflow: hidden;
-            aspect-ratio: 9/16;
+        .item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain; /* shows full image without cropping */
         }
 
         /* Desktop specific layout variations */
