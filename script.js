@@ -353,3 +353,185 @@ gsap.registerPlugin(ScrollTrigger);
                 { rotation: 360, scale: 1, duration: 0.5, ease: "back.out(1.5)" }
             );
         });
+
+        // --- Instagram Feed Integration ---
+        const INSTAGRAM_CONFIG = {
+            useAPI: false, // Set to true to fetch dynamically, false to use curated list
+            accessToken: '', // Instagram access token (Basic Display API / Graph API)
+            limit: 6
+        };
+
+        const INSTAGRAM_CURATED = [
+            {
+                media_url: 'img/photo7.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'Finding patterns in the wild. Nature’s geometry is unmatched. 🌿📷 #naturephotography #kerala #unspokencorners',
+                likes: 184,
+                comments: 24,
+                media_type: 'IMAGE'
+            },
+            {
+                media_url: 'img/photo8.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'Dancing shadows and warm highlights. A quiet corner in Kerala. ✨🕯️ #moodygrams #cinematic #shadows',
+                likes: 215,
+                comments: 18,
+                media_type: 'IMAGE'
+            },
+            {
+                media_url: 'img/photo9.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'Where the mountains meet the mist. A cinematic path through Vagamon. ⛰️🌫️ #vagamon #travelkerala #mistyhills',
+                likes: 312,
+                comments: 42,
+                media_type: 'IMAGE'
+            },
+            {
+                media_url: 'img/photo10.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'Chasing the gold in the ordinary. Frame of light. 🌅🌾 #sunsetlovers #goldenhour #silhouettes',
+                likes: 198,
+                comments: 15,
+                media_type: 'IMAGE'
+            },
+            {
+                media_url: 'img/photo11.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'A window to the past. Mannanam Monasteries holding years of silence. ⛪ #keraladiaries #windows #architecture',
+                likes: 256,
+                comments: 29,
+                media_type: 'IMAGE'
+            },
+            {
+                media_url: 'img/photo12.jpg',
+                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
+                caption: 'Framed by silence. The moon sitting quietly. 🌙🖤 #nightsky #moonlight #silence',
+                likes: 403,
+                comments: 51,
+                media_type: 'IMAGE'
+            }
+        ];
+
+        function initInstagramFeed() {
+            const feedContainer = document.getElementById('instagram-feed');
+            if (!feedContainer) return;
+
+            if (INSTAGRAM_CONFIG.useAPI && INSTAGRAM_CONFIG.accessToken) {
+                const url = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username&access_token=${INSTAGRAM_CONFIG.accessToken}&limit=${INSTAGRAM_CONFIG.limit}`;
+                
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('API request failed');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data && data.data && data.data.length > 0) {
+                            renderInstagramFeed(data.data);
+                        } else {
+                            throw new Error('No posts returned');
+                        }
+                    })
+                    .catch(error => {
+                        console.warn('Instagram API error, falling back to curated posts:', error);
+                        renderInstagramFeed(INSTAGRAM_CURATED);
+                    });
+            } else {
+                // Use curated feed directly
+                // Simulate a tiny network latency for visual polish
+                setTimeout(() => {
+                    renderInstagramFeed(INSTAGRAM_CURATED);
+                }, 600);
+            }
+        }
+
+        function renderInstagramFeed(posts) {
+            const feedContainer = document.getElementById('instagram-feed');
+            if (!feedContainer) return;
+
+            feedContainer.innerHTML = ''; // Clear loader
+            
+            // Update posts count if we have the posts list length
+            const postsCountEl = document.getElementById('ig-posts-count');
+            if (postsCountEl && posts.length > 0) {
+                postsCountEl.innerText = Math.max(posts.length, 14); // Keep a realistic count
+            }
+
+            posts.slice(0, INSTAGRAM_CONFIG.limit).forEach(post => {
+                const imageUrl = post.media_type === 'VIDEO' ? (post.thumbnail_url || post.media_url) : post.media_url;
+                const captionText = post.caption || 'Unspoken Corners';
+                const likesCount = post.likes || Math.floor(Math.random() * 200) + 100;
+                const commentsCount = post.comments || Math.floor(Math.random() * 30) + 10;
+                const isVideo = post.media_type === 'VIDEO';
+
+                const card = document.createElement('a');
+                card.href = post.permalink || 'https://www.instagram.com/_capturecrazejosh_/';
+                card.target = '_blank';
+                card.className = 'ig-card';
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `Instagram post: ${captionText}`);
+                
+                card.innerHTML = `
+                    <img class="ig-card-img" src="${imageUrl}" alt="${captionText.substring(0, 50)}" loading="lazy">
+                    <span class="ig-meta-top">
+                        <i class="fa-${isVideo ? 'solid fa-video' : 'brands fa-instagram'}"></i>
+                    </span>
+                    <div class="ig-overlay">
+                        <div class="ig-likes-comments">
+                            <span><i class="fa-solid fa-heart"></i> ${likesCount}</span>
+                            <span><i class="fa-solid fa-comment"></i> ${commentsCount}</span>
+                        </div>
+                        <p class="ig-caption">${captionText}</p>
+                    </div>
+                `;
+
+                // Register custom cursor hover interactions
+                card.addEventListener('mouseenter', () => {
+                    const cursor = document.querySelector('.cursor');
+                    const follower = document.querySelector('.cursor-follower');
+                    if (cursor && follower) {
+                        cursor.classList.add('active');
+                        follower.classList.add('active');
+                    }
+                });
+                card.addEventListener('mouseleave', () => {
+                    const cursor = document.querySelector('.cursor');
+                    const follower = document.querySelector('.cursor-follower');
+                    if (cursor && follower) {
+                        cursor.classList.remove('active');
+                        follower.classList.remove('active');
+                    }
+                });
+
+                feedContainer.appendChild(card);
+            });
+
+            // Add GSAP reveal scrolltrigger animation
+            gsap.from("#instagram .instagram-header", {
+                scrollTrigger: {
+                    trigger: "#instagram",
+                    start: "top 80%",
+                },
+                y: 40,
+                opacity: 0,
+                duration: 1,
+                ease: "power3.out"
+            });
+
+            gsap.from(".ig-card", {
+                scrollTrigger: {
+                    trigger: ".instagram-feed",
+                    start: "top 85%",
+                },
+                y: 60,
+                opacity: 0,
+                duration: 1.2,
+                stagger: 0.1,
+                ease: "power4.out",
+                filter: "blur(5px)"
+            });
+        }
+
+        // Initialize Instagram Feed
+        initInstagramFeed();
