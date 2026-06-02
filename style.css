@@ -1855,3 +1855,77 @@ body.light-mode .ig-card:hover .ig-meta-top {
         padding: 20px;
     }
 }
+
+/* --- Dev Setup & Last Updated Styles --- */
+.ig-last-updated {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+    letter-spacing: 1px;
+    font-weight: 400;
+}
+
+.dev-setup-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.35;
+    transition: var(--transition);
+}
+
+.dev-setup-btn:hover {
+    opacity: 1;
+    color: var(--accent-purple);
+}
+
+/* Developer Modal Input Styling */
+.ig-config-modal input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 15px rgba(157, 80, 187, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ig-config-modal .save-btn:hover {
+    box-shadow: 0 10px 25px rgba(157, 80, 187, 0.3);
+}
+
+.ig-config-modal .clear-btn:hover {
+    background: #ff304f !important;
+    color: #fff !important;
+    box-shadow: 0 10px 25px rgba(255, 48, 79, 0.2);
+}
+
+/* Light Mode Overrides */
+body.light-mode .ig-last-updated {
+    color: var(--text-dim);
+}
+
+body.light-mode .dev-setup-btn {
+    color: var(--text-dim);
+}
+
+body.light-mode .dev-setup-btn:hover {
+    color: var(--accent-purple);
+}
+
+body.light-mode .ig-config-modal input {
+    background: rgba(15, 23, 42, 0.03) !important;
+    border-color: rgba(15, 23, 42, 0.1) !important;
+    color: var(--text-main) !important;
+}
+
+body.light-mode .ig-config-modal input:focus {
+    border-color: var(--accent-purple) !important;
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.15) !important;
+    background: #ffffff !important;
+}

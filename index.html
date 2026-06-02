@@ -284,6 +284,31 @@ The leaves turned into silhouettes, the sky became a soft canvas, and the moon s
             </div>
         </div>
     </div>
+
+    <!-- Developer Token Modal -->
+    <div id="igConfigModal" class="modal ig-config-modal">
+        <button class="close-modal" id="closeIgConfig" type="button" aria-label="Close configuration"><i
+                class="fa-solid fa-xmark"></i></button>
+        <div class="modal-container no-blog">
+            <div class="modal-blog config-box">
+                <h4>Feed Developer Setup</h4>
+                <p>This setting is stored locally in your browser's <code>localStorage</code>. It is never committed to GitHub or exposed publicly.</p>
+                
+                <form id="igConfigForm" onsubmit="event.preventDefault();">
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="igAccessToken" style="display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px;">Instagram Access Token</label>
+                        <input type="password" id="igAccessToken" placeholder="Paste your Access Token here..." autocomplete="current-password" style="width: 100%; padding: 14px 20px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-family: inherit; font-size: 0.95rem; transition: var(--transition);">
+                        <small style="display: block; margin-top: 6px; font-size: 0.75rem; color: var(--text-dim);">Generate this via your Meta Developer Dashboard (using the Instagram User Token Generator).</small>
+                    </div>
+                    <div style="display: flex; gap: 15px; margin-top: 25px;">
+                        <button type="submit" class="back-btn save-btn" id="saveIgToken" style="background: var(--accent-purple); border-color: var(--accent-purple); color: #fff;"><i class="fa-solid fa-check"></i> Save Token</button>
+                        <button type="button" class="back-btn clear-btn" id="clearIgToken" style="background: rgba(220, 39, 67, 0.1); border-color: rgba(220, 39, 67, 0.3); color: #ff304f;"><i class="fa-solid fa-trash"></i> Delete Token</button>
+                    </div>
+                </form>
+                <div id="configStatus" class="config-status-message" style="margin-top: 20px; font-size: 0.9rem; font-weight: 500;"></div>
+            </div>
+        </div>
+    </div>
     
     <!-- INSTAGRAM SECTION -->
     <section id="instagram" class="instagram-section">
@@ -299,6 +324,8 @@ The leaves turned into silhouettes, the sky became a soft canvas, and the moon s
                         <span class="ig-badge"><i class="fa-brands fa-instagram"></i> Instagram Feed</span>
                         <h3>@_capturecrazejosh_</h3>
                         <p class="ig-bio">Turning ordinary scenes into compelling visual stories.</p>
+                        <div class="ig-last-updated" id="ig-last-updated">Checking feed status...</div>
+                        <button id="devSetupBtn" class="dev-setup-btn" aria-label="Open developer configuration"><i class="fa-solid fa-gear"></i> Dev Setup</button>
                     </div>
                 </div>
                 <div class="instagram-stats-cta">

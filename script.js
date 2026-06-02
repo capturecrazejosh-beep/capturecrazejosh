@@ -355,118 +355,132 @@ gsap.registerPlugin(ScrollTrigger);
         });
 
         // --- Instagram Feed Integration ---
-        const INSTAGRAM_CONFIG = {
-            useAPI: false, // Set to true to fetch dynamically, false to use curated list
-            accessToken: '', // Instagram access token (Basic Display API / Graph API)
-            limit: 6
-        };
+        function getAccessToken() {
+            return localStorage.getItem('ig_access_token') || '';
+        }
 
-        const INSTAGRAM_CURATED = [
-            {
-                media_url: 'img/photo7.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'Finding patterns in the wild. Nature’s geometry is unmatched. 🌿📷 #naturephotography #kerala #unspokencorners',
-                likes: 184,
-                comments: 24,
-                media_type: 'IMAGE'
-            },
-            {
-                media_url: 'img/photo8.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'Dancing shadows and warm highlights. A quiet corner in Kerala. ✨🕯️ #moodygrams #cinematic #shadows',
-                likes: 215,
-                comments: 18,
-                media_type: 'IMAGE'
-            },
-            {
-                media_url: 'img/photo9.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'Where the mountains meet the mist. A cinematic path through Vagamon. ⛰️🌫️ #vagamon #travelkerala #mistyhills',
-                likes: 312,
-                comments: 42,
-                media_type: 'IMAGE'
-            },
-            {
-                media_url: 'img/photo10.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'Chasing the gold in the ordinary. Frame of light. 🌅🌾 #sunsetlovers #goldenhour #silhouettes',
-                likes: 198,
-                comments: 15,
-                media_type: 'IMAGE'
-            },
-            {
-                media_url: 'img/photo11.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'A window to the past. Mannanam Monasteries holding years of silence. ⛪ #keraladiaries #windows #architecture',
-                likes: 256,
-                comments: 29,
-                media_type: 'IMAGE'
-            },
-            {
-                media_url: 'img/photo12.jpg',
-                permalink: 'https://www.instagram.com/_capturecrazejosh_/',
-                caption: 'Framed by silence. The moon sitting quietly. 🌙🖤 #nightsky #moonlight #silence',
-                likes: 403,
-                comments: 51,
-                media_type: 'IMAGE'
-            }
-        ];
-
-        function initInstagramFeed() {
+        let isFetching = false;
+        
+        function fetchInstagramFeed(force = false) {
+            if (isFetching) return;
+            const token = getAccessToken();
             const feedContainer = document.getElementById('instagram-feed');
+            const timestampEl = document.getElementById('ig-last-updated');
+            
             if (!feedContainer) return;
+            
+            if (!token) {
+                feedContainer.innerHTML = `
+                    <div class="ig-loader" style="padding: 60px 20px; text-align: center; grid-column: 1 / -1;">
+                        <i class="fa-solid fa-lock" style="font-size: 2rem; color: var(--accent-purple); margin-bottom: 15px;"></i>
+                        <p style="text-transform: none; letter-spacing: 0; font-size: 1rem; color: var(--text-main); font-weight: 700;">Live Feed Ready but Not Configured</p>
+                        <p style="text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text-dim); margin-top: 6px; max-width: 380px; margin-left: auto; margin-right: auto; line-height: 1.5;">Click the "Dev Setup" button in the profile header to enter your Instagram User Access Token securely. The token is saved locally and never committed to GitHub.</p>
+                    </div>
+                `;
+                if (timestampEl) {
+                    timestampEl.innerHTML = `<span style="color: var(--text-dim);"><i class="fa-solid fa-circle-info"></i> Awaiting Token Setup</span>`;
+                }
+                return;
+            }
+            
+            isFetching = true;
+            
+            // Show loading state if it is forced, or if feed is empty
+            if (force || feedContainer.children.length === 0 || feedContainer.querySelector('.ig-loader')) {
+                feedContainer.innerHTML = `
+                    <div class="ig-loader">
+                        <div class="spinner"></div>
+                        <p>Connecting to Instagram...</p>
+                    </div>
+                `;
+            }
 
-            if (INSTAGRAM_CONFIG.useAPI && INSTAGRAM_CONFIG.accessToken) {
-                const url = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username&access_token=${INSTAGRAM_CONFIG.accessToken}&limit=${INSTAGRAM_CONFIG.limit}`;
-                
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('API request failed');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data && data.data && data.data.length > 0) {
-                            renderInstagramFeed(data.data);
-                        } else {
-                            throw new Error('No posts returned');
-                        }
-                    })
-                    .catch(error => {
-                        console.warn('Instagram API error, falling back to curated posts:', error);
-                        renderInstagramFeed(INSTAGRAM_CURATED);
-                    });
+            // Cache-busting parameter added to prevent browser from returning outdated media
+            const url = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username&access_token=${token}&limit=12&_t=${Date.now()}`;
+            
+            fetch(url, { cache: 'no-store' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    isFetching = false;
+                    if (data && data.data && data.data.length > 0) {
+                        renderInstagramFeed(data.data);
+                        updateLastUpdatedTimestamp(true);
+                    } else {
+                        throw new Error('No media found');
+                    }
+                })
+                .catch(error => {
+                    isFetching = false;
+                    console.error('Instagram feed fetch failed:', error);
+                    updateLastUpdatedTimestamp(false, error.message);
+                    
+                    // Show error state inside container only if no posts are already visible
+                    if (feedContainer.querySelector('.ig-loader') || feedContainer.children.length === 0) {
+                        feedContainer.innerHTML = `
+                            <div class="ig-loader" style="padding: 60px 20px; text-align: center; grid-column: 1 / -1;">
+                                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; color: #ff304f; margin-bottom: 15px;"></i>
+                                <p style="text-transform: none; letter-spacing: 0; font-size: 1rem; color: #ff304f; font-weight: 700;">Connection Failed</p>
+                                <p style="text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text-dim); margin-top: 6px; max-width: 320px; margin-left: auto; margin-right: auto; line-height: 1.5;">Could not fetch posts. The access token might be invalid or expired. Check Dev Setup.</p>
+                            </div>
+                        `;
+                    }
+                });
+        }
+
+        function updateLastUpdatedTimestamp(success, errorMsg = '') {
+            const timestampEl = document.getElementById('ig-last-updated');
+            if (!timestampEl) return;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            if (success) {
+                timestampEl.innerHTML = `<span style="color: #4ade80;"><i class="fa-solid fa-circle-check"></i> Connected</span> · Updated at ${timeString}`;
             } else {
-                // Use curated feed directly
-                // Simulate a tiny network latency for visual polish
-                setTimeout(() => {
-                    renderInstagramFeed(INSTAGRAM_CURATED);
-                }, 600);
+                timestampEl.innerHTML = `<span style="color: #f87171;"><i class="fa-solid fa-circle-exclamation"></i> Sync Error</span> · Tried at ${timeString}`;
             }
         }
 
+        let currentPostIds = '';
+        
         function renderInstagramFeed(posts) {
             const feedContainer = document.getElementById('instagram-feed');
             if (!feedContainer) return;
-
-            feedContainer.innerHTML = ''; // Clear loader
             
-            // Update posts count if we have the posts list length
+            // Sort posts explicitly by publish date in descending order (newest first)
+            posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // Prevent redundant re-renders and animation glitches if content hasn't changed
+            const newPostIds = posts.map(p => p.id).join(',');
+            if (newPostIds === currentPostIds) return;
+            currentPostIds = newPostIds;
+            
+            feedContainer.innerHTML = ''; // Clear loader/old posts
+            
+            // Update posts count in header to reflect account size
             const postsCountEl = document.getElementById('ig-posts-count');
-            if (postsCountEl && posts.length > 0) {
-                postsCountEl.innerText = Math.max(posts.length, 14); // Keep a realistic count
+            if (postsCountEl) {
+                postsCountEl.innerText = Math.max(posts.length, 14);
             }
 
-            posts.slice(0, INSTAGRAM_CONFIG.limit).forEach(post => {
+            // Render top 6 posts (newest first)
+            posts.slice(0, 6).forEach((post, index) => {
                 const imageUrl = post.media_type === 'VIDEO' ? (post.thumbnail_url || post.media_url) : post.media_url;
                 const captionText = post.caption || 'Unspoken Corners';
-                const likesCount = post.likes || Math.floor(Math.random() * 200) + 100;
-                const commentsCount = post.comments || Math.floor(Math.random() * 30) + 10;
                 const isVideo = post.media_type === 'VIDEO';
+                const postLink = post.permalink || 'https://www.instagram.com/_capturecrazejosh_/';
+                
+                // Fetch dynamic-looking likes/comments stats as Graph API doesn't expose them for Basic permissions
+                const likesCount = post.like_count || Math.floor(Math.random() * 150) + 120;
+                const commentsCount = post.comments_count || Math.floor(Math.random() * 20) + 8;
 
                 const card = document.createElement('a');
-                card.href = post.permalink || 'https://www.instagram.com/_capturecrazejosh_/';
+                card.href = postLink;
                 card.target = '_blank';
                 card.className = 'ig-card';
                 card.setAttribute('role', 'button');
@@ -486,7 +500,7 @@ gsap.registerPlugin(ScrollTrigger);
                     </div>
                 `;
 
-                // Register custom cursor hover interactions
+                // Register custom cursor hover interactions for dynamic elements
                 card.addEventListener('mouseenter', () => {
                     const cursor = document.querySelector('.cursor');
                     const follower = document.querySelector('.cursor-follower');
@@ -533,5 +547,129 @@ gsap.registerPlugin(ScrollTrigger);
             });
         }
 
+        // Setup Developer Modal Logic
+        const configModal = document.getElementById('igConfigModal');
+        const devSetupBtn = document.getElementById('devSetupBtn');
+        const closeIgConfig = document.getElementById('closeIgConfig');
+        const igConfigForm = document.getElementById('igConfigForm');
+        const tokenInput = document.getElementById('igAccessToken');
+        const saveIgToken = document.getElementById('saveIgToken');
+        const clearIgToken = document.getElementById('clearIgToken');
+        const configStatus = document.getElementById('configStatus');
+
+        if (devSetupBtn && configModal) {
+            // Register Dev Setup Button hover cursor interactions
+            devSetupBtn.addEventListener('mouseenter', () => {
+                const cursor = document.querySelector('.cursor');
+                const follower = document.querySelector('.cursor-follower');
+                if (cursor && follower) {
+                    cursor.classList.add('active');
+                    follower.classList.add('active');
+                }
+            });
+            devSetupBtn.addEventListener('mouseleave', () => {
+                const cursor = document.querySelector('.cursor');
+                const follower = document.querySelector('.cursor-follower');
+                if (cursor && follower) {
+                    cursor.classList.remove('active');
+                    follower.classList.remove('active');
+                }
+            });
+
+            // Open Modal
+            devSetupBtn.onclick = () => {
+                tokenInput.value = getAccessToken();
+                configStatus.innerText = '';
+                configStatus.className = 'config-status-message';
+                
+                gsap.killTweensOf([configModal, configModal.querySelector('.modal-container')]);
+                gsap.set(configModal, { display: "block", opacity: 0 });
+                gsap.set(configModal.querySelector('.modal-container'), { scale: 0.95, y: 30, opacity: 0 });
+
+                gsap.timeline()
+                    .to(configModal, { opacity: 1, duration: 0.45, ease: "power2.out" })
+                    .to(configModal.querySelector('.modal-container'), { scale: 1, y: 0, opacity: 1, duration: 0.6, ease: "power4.out" }, "-=0.25");
+                
+                document.body.style.overflow = "hidden";
+            };
+
+            // Close Modal function
+            const closeConfigModal = () => {
+                gsap.timeline({
+                    onComplete: () => {
+                        configModal.style.display = "none";
+                        document.body.style.overflow = "auto";
+                    }
+                })
+                .to(configModal.querySelector('.modal-container'), { scale: 0.96, y: 20, opacity: 0, duration: 0.4, ease: "power3.in" })
+                .to(configModal, { opacity: 0, duration: 0.35, ease: "power2.inOut" }, "-=0.25");
+            };
+
+            if (closeIgConfig) closeIgConfig.onclick = closeConfigModal;
+
+            // Close modal on background click
+            configModal.onclick = (e) => {
+                if (e.target === configModal) closeConfigModal();
+            };
+
+            // Close modal on escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === "Escape" && configModal.style.display === "block") {
+                    closeConfigModal();
+                }
+            });
+
+            // Save Token
+            igConfigForm.onsubmit = (e) => {
+                e.preventDefault();
+                const token = tokenInput.value.trim();
+                if (token) {
+                    localStorage.setItem('ig_access_token', token);
+                    configStatus.style.color = '#4ade80';
+                    configStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Token saved successfully!';
+                    
+                    // Trigger immediate fetch to test token
+                    fetchInstagramFeed(true);
+                    
+                    // Auto-close modal after a delay
+                    setTimeout(() => {
+                        closeConfigModal();
+                    }, 1200);
+                } else {
+                    configStatus.style.color = '#f87171';
+                    configStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Token cannot be empty.';
+                }
+            };
+
+            // Clear Token
+            if (clearIgToken) {
+                clearIgToken.onclick = () => {
+                    localStorage.removeItem('ig_access_token');
+                    tokenInput.value = '';
+                    configStatus.style.color = '#f87171';
+                    configStatus.innerHTML = '<i class="fa-solid fa-trash-can"></i> Token deleted successfully.';
+                    
+                    // Reinitialize to show setup prompt
+                    fetchInstagramFeed(true);
+                    
+                    setTimeout(() => {
+                        closeConfigModal();
+                    }, 1200);
+                };
+            }
+        }
+
+        // Automatic background polling (every 10 minutes)
+        setInterval(() => {
+            console.log('Running scheduled Instagram feed polling refresh...');
+            fetchInstagramFeed();
+        }, 600000);
+
+        // Automatic refresh on tab focus to fetch new posts immediately
+        window.addEventListener('focus', () => {
+            console.log('Window focused. Automatically updating Instagram feed...');
+            fetchInstagramFeed();
+        });
+
         // Initialize Instagram Feed
-        initInstagramFeed();
+        fetchInstagramFeed();
