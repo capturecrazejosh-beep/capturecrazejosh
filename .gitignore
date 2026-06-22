@@ -3,3 +3,13 @@ Book Reel.mp4
 
 # Instagram configuration (local development only)
 instagram-config.json
+
+# Next.js
+.next/
+out/
+build/
+node_modules/
+.env*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
