@@ -768,11 +768,11 @@ export default function Home() {
             <div className="instagram-stats-cta">
               <div className="ig-stats">
                 <div className="stat-item">
-                  <span className="stat-val">14</span>
+                  <span className="stat-val">126</span>
                   <span className="stat-lbl">Posts</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-val">1.2k</span>
+                  <span className="stat-val">1.5k</span>
                   <span className="stat-lbl">Followers</span>
                 </div>
               </div>
