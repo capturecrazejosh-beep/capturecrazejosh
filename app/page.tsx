@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
+import BeholdWidget from '@behold/react';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -184,19 +185,7 @@ export default function Home() {
   const modalContainerRef = useRef<HTMLDivElement>(null);
   const modalVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Instagram Feed State
-  const [igToken, setIgToken] = useState('');
-  const [igPosts, setIgPosts] = useState<any[]>([]);
-  const [igStatus, setIgStatus] = useState('Checking feed status...');
-  const [igStatusSuccess, setIgStatusSuccess] = useState<boolean | null>(null);
-  const [igLoading, setIgLoading] = useState(false);
-  const [igPostsCount, setIgPostsCount] = useState(14);
-  const [devModalOpen, setDevModalOpen] = useState(false);
-  const [devTokenInput, setDevTokenInput] = useState('');
-  const [configStatusText, setConfigStatusText] = useState('');
-  const [configStatusSuccess, setConfigStatusSuccess] = useState(true);
-  const devModalRef = useRef<HTMLDivElement>(null);
-  const devModalContainerRef = useRef<HTMLDivElement>(null);
+
 
   // Handle active cursor hover triggers
   const handleMouseEnter = () => {
@@ -220,9 +209,6 @@ export default function Home() {
     } else {
       document.body.classList.remove('light-mode');
     }
-
-    const token = localStorage.getItem('ig_access_token') || '';
-    setIgToken(token);
   }, []);
 
   // ----------------------------------------------------
@@ -541,7 +527,6 @@ export default function Home() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleCloseModal();
-        setDevModalOpen(false);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -550,185 +535,7 @@ export default function Home() {
     };
   }, []);
 
-  // ----------------------------------------------------
-  // 6. Instagram Feed Integration
-  // ----------------------------------------------------
-  const fetchInstagramFeed = async (token: string, force = false) => {
-    if (igLoading) return;
-    if (!token) {
-      setIgStatus('Awaiting Token Setup');
-      setIgStatusSuccess(null);
-      return;
-    }
 
-    const timestampEl = new Date();
-    const timeString = timestampEl.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
-    // If forcing or first render, empty container states
-    if (force || igPosts.length === 0) {
-      setIgLoading(true);
-    }
-
-    try {
-      const url = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username&access_token=${token}&limit=12&_t=${Date.now()}`;
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (data && data.data && data.data.length > 0) {
-        const posts = data.data;
-        posts.sort(
-          (a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        setIgPosts(posts);
-        setIgStatus(`Connected · Updated at ${timeString}`);
-        setIgStatusSuccess(true);
-        setIgPostsCount(Math.max(posts.length, 14));
-      } else {
-        throw new Error('No media found');
-      }
-    } catch (error: any) {
-      console.error('Instagram feed fetch failed:', error);
-      setIgStatus(`Sync Error · Tried at ${timeString}`);
-      setIgStatusSuccess(false);
-    } finally {
-      setIgLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (igToken) {
-      fetchInstagramFeed(igToken);
-
-      // 10 minute polling
-      const pollInterval = setInterval(() => {
-        fetchInstagramFeed(igToken);
-      }, 600000);
-
-      // Focus listeners
-      const handleWindowFocus = () => {
-        fetchInstagramFeed(igToken);
-      };
-      window.addEventListener('focus', handleWindowFocus);
-
-      return () => {
-        clearInterval(pollInterval);
-        window.removeEventListener('focus', handleWindowFocus);
-      };
-    } else {
-      setIgStatus('Awaiting Token Setup');
-      setIgStatusSuccess(null);
-    }
-  }, [igToken]);
-
-  // Instagram Cards Entry Animation
-  useEffect(() => {
-    if (igPosts.length > 0) {
-      // Animate Instagram Header reveal
-      gsap.from('#instagram .instagram-header', {
-        scrollTrigger: {
-          trigger: '#instagram',
-          start: 'top 80%',
-        },
-        y: 40,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-      });
-
-      // Animate dynamic ig cards
-      gsap.from('.ig-card', {
-        scrollTrigger: {
-          trigger: '.instagram-feed',
-          start: 'top 85%',
-        },
-        y: 60,
-        opacity: 0,
-        duration: 1.2,
-        stagger: 0.1,
-        ease: 'power4.out',
-        filter: 'blur(5px)',
-      });
-    }
-  }, [igPosts]);
-
-  // ----------------------------------------------------
-  // 7. Developer Setup Modal Logic
-  // ----------------------------------------------------
-  useEffect(() => {
-    const modal = devModalRef.current;
-    const container = devModalContainerRef.current;
-    if (!modal || !container) return;
-
-    if (devModalOpen) {
-      setDevTokenInput(localStorage.getItem('ig_access_token') || '');
-      setConfigStatusText('');
-      document.body.style.overflow = 'hidden';
-
-      gsap.killTweensOf([modal, container]);
-      gsap.set(modal, { display: 'block', opacity: 0 });
-      gsap.set(container, { scale: 0.95, y: 30, opacity: 0 });
-
-      gsap
-        .timeline()
-        .to(modal, { opacity: 1, duration: 0.45, ease: 'power2.out' })
-        .to(
-          container,
-          { scale: 1, y: 0, opacity: 1, duration: 0.6, ease: 'power4.out' },
-          '-=0.25'
-        );
-    } else {
-      if (modal.style.display !== 'none') {
-        gsap
-          .timeline({
-            onComplete: () => {
-              modal.style.display = 'none';
-              document.body.style.overflow = 'auto';
-            },
-          })
-          .to(container, { scale: 0.96, y: 20, opacity: 0, duration: 0.4, ease: 'power3.in' })
-          .to(modal, { opacity: 0, duration: 0.35, ease: 'power2.inOut' }, '-=0.25');
-      }
-    }
-  }, [devModalOpen]);
-
-  const handleSaveIgToken = (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = devTokenInput.trim();
-    if (token) {
-      localStorage.setItem('ig_access_token', token);
-      setIgToken(token);
-      setConfigStatusSuccess(true);
-      setConfigStatusText('Token saved successfully!');
-
-      fetchInstagramFeed(token, true);
-
-      setTimeout(() => {
-        setDevModalOpen(false);
-      }, 1200);
-    } else {
-      setConfigStatusSuccess(false);
-      setConfigStatusText('Token cannot be empty.');
-    }
-  };
-
-  const handleClearIgToken = () => {
-    localStorage.removeItem('ig_access_token');
-    setIgToken('');
-    setIgPosts([]);
-    setDevTokenInput('');
-    setConfigStatusSuccess(false);
-    setConfigStatusText('Token deleted successfully.');
-
-    setTimeout(() => {
-      setDevModalOpen(false);
-    }, 1200);
-  };
 
   return (
     <>
@@ -955,23 +762,13 @@ export default function Home() {
                 </span>
                 <h3>@_capturecrazejosh_</h3>
                 <p className="ig-bio">Turning ordinary scenes into compelling visual stories.</p>
-                <div className="ig-last-updated">{igStatus}</div>
-                <button
-                  id="devSetupBtn"
-                  className="dev-setup-btn"
-                  aria-label="Open developer configuration"
-                  onClick={() => setDevModalOpen(true)}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <i className="fa-solid fa-gear"></i> Dev Setup
-                </button>
+                <div className="ig-last-updated">Live Feed via Behold</div>
               </div>
             </div>
             <div className="instagram-stats-cta">
               <div className="ig-stats">
                 <div className="stat-item">
-                  <span className="stat-val">{igPostsCount}</span>
+                  <span className="stat-val">14</span>
                   <span className="stat-lbl">Posts</span>
                 </div>
                 <div className="stat-item">
@@ -992,68 +789,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div id="instagram-feed" className="instagram-feed">
-            {igLoading ? (
-              <div className="ig-loader">
-                <div className="spinner"></div>
-                <p>Connecting to Instagram...</p>
-              </div>
-            ) : igToken === '' ? (
-              <div className="ig-loader" style={{ padding: '60px 20px', textAlign: 'center', gridColumn: '1 / -1' }}>
-                <i className="fa-solid fa-lock" style={{ fontSize: '2rem', color: 'var(--accent-purple)', marginBottom: '15px' }}></i>
-                <p style={{ textTransform: 'none', letterSpacing: 0, fontSize: '1rem', color: 'var(--text-main)', fontWeight: 700 }}>
-                  Live Feed Ready but Not Configured
-                </p>
-                <p style={{ textTransform: 'none', letterSpacing: 0, fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '6px', maxWidth: '380px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
-                  Click the &quot;Dev Setup&quot; button in the profile header to enter your Instagram User Access Token securely. The token is saved locally and never committed to GitHub.
-                </p>
-              </div>
-            ) : igStatusSuccess === false ? (
-              <div className="ig-loader" style={{ padding: '60px 20px', textAlign: 'center', gridColumn: '1 / -1' }}>
-                <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2rem', color: '#ff304f', marginBottom: '15px' }}></i>
-                <p style={{ textTransform: 'none', letterSpacing: 0, fontSize: '1rem', color: '#ff304f', fontWeight: 700 }}>
-                  Connection Failed
-                </p>
-                <p style={{ textTransform: 'none', letterSpacing: 0, fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '6px', maxWidth: '320px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
-                  Could not fetch posts. The access token might be invalid or expired. Check Dev Setup.
-                </p>
-              </div>
-            ) : (
-              igPosts.slice(0, 12).map((post) => {
-                const imageUrl = post.media_type === 'VIDEO' ? (post.thumbnail_url || post.media_url) : post.media_url;
-                const captionText = post.caption || 'Unspoken Corners';
-                const isVideo = post.media_type === 'VIDEO';
-                const postLink = post.permalink || 'https://www.instagram.com/_capturecrazejosh_/';
-                const likesCount = post.like_count || Math.floor(Math.random() * 150) + 120;
-                const commentsCount = post.comments_count || Math.floor(Math.random() * 20) + 8;
-
-                return (
-                  <a
-                    key={post.id}
-                    href={postLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ig-card"
-                    role="button"
-                    aria-label={`Instagram post: ${captionText}`}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    <img className="ig-card-img" src={imageUrl} alt={captionText.substring(0, 50)} loading="lazy" />
-                    <span className="ig-meta-top">
-                      <i className={`fa-${isVideo ? 'solid fa-video' : 'brands fa-instagram'}`}></i>
-                    </span>
-                    <div className="ig-overlay">
-                      <div className="ig-likes-comments">
-                        <span><i className="fa-solid fa-heart"></i> {likesCount}</span>
-                        <span><i className="fa-solid fa-comment"></i> {commentsCount}</span>
-                      </div>
-                      <p className="ig-caption">{captionText}</p>
-                    </div>
-                  </a>
-                );
-              })
-            )}
+          <div className="instagram-feed-wrapper" style={{ marginTop: '40px' }}>
+            <BeholdWidget feedId="qiG9RI1scrgsQRfSXKw7" />
           </div>
         </div>
       </section>
@@ -1163,79 +900,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Instagram Config Modal */}
-      <div id="igConfigModal" ref={devModalRef} className="modal ig-config-modal">
-        <button
-          className="close-modal"
-          id="closeIgConfig"
-          type="button"
-          aria-label="Close configuration"
-          onClick={() => setDevModalOpen(false)}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <i className="fa-solid fa-xmark"></i>
-        </button>
-        <div ref={devModalContainerRef} className="modal-container no-blog">
-          <div className="modal-blog config-box">
-            <h4>Feed Developer Setup</h4>
-            <p>This setting is stored locally in your browser&apos;s <code>localStorage</code>. It is never committed to GitHub or exposed publicly.</p>
-            
-            <form id="igConfigForm" onSubmit={handleSaveIgToken}>
-              <div className="form-group" style={{ marginTop: '20px' }}>
-                <label
-                  htmlFor="igAccessToken"
-                  style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-dim)', marginBottom: '8px' }}
-                >
-                  Instagram Access Token
-                </label>
-                <input
-                  type="password"
-                  id="igAccessToken"
-                  placeholder="Paste your Access Token here..."
-                  autoComplete="current-password"
-                  value={devTokenInput}
-                  onChange={(e) => setDevTokenInput(e.target.value)}
-                  style={{ width: '100%', padding: '14px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'inherit', fontSize: '0.95rem', transition: 'var(--transition)' }}
-                />
-                <small style={{ display: 'block', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                  Generate this via your Meta Developer Dashboard (using the Instagram User Token Generator).
-                </small>
-              </div>
-              <div style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
-                <button
-                  type="submit"
-                  className="back-btn save-btn"
-                  style={{ background: 'var(--accent-purple)', borderColor: 'var(--accent-purple)', color: '#fff' }}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <i className="fa-solid fa-check"></i> Save Token
-                </button>
-                <button
-                  type="button"
-                  className="back-btn clear-btn"
-                  onClick={handleClearIgToken}
-                  style={{ background: 'rgba(220, 39, 67, 0.1)', borderColor: 'rgba(220, 39, 67, 0.3)', color: '#ff304f' }}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <i className="fa-solid fa-trash"></i> Delete Token
-                </button>
-              </div>
-            </form>
-            {configStatusText && (
-              <div
-                id="configStatus"
-                className="config-status-message"
-                style={{ marginTop: '20px', fontSize: '0.9rem', fontWeight: 500, color: configStatusSuccess ? '#4ade80' : '#f87171' }}
-              >
-                <i className={`fa-solid ${configStatusSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'}`}></i> {configStatusText}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+
     </>
   );
 }
